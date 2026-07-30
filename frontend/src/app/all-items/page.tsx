@@ -428,39 +428,6 @@ function AllItemsPageInner() {
             </button>
           )}
         </div>
-
-        {/* Divider */}
-        <span className="text-border select-none">|</span>
-
-        {/* Filter chips */}
-        <div className="flex flex-wrap gap-1.5">
-          {ALL_FILTERS.map(({ key, label }) => {
-            const active = activeFilters.includes(key)
-            return (
-              <button
-                key={key}
-                type="button"
-                onClick={() => toggleFilter(key)}
-                className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
-                  active
-                    ? 'border-blue-500 bg-blue-100 text-blue-700'
-                    : 'border-border bg-surface-alt text-muted hover:bg-interactive-hover-bg'
-                }`}
-              >
-                {label}
-              </button>
-            )
-          })}
-          {activeFilters.length > 0 && (
-            <button
-              type="button"
-              onClick={() => replaceParams({ filter: '' })}
-              className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:bg-interactive-hover-bg"
-            >
-              Clear filters
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Loading */}
@@ -502,6 +469,36 @@ function AllItemsPageInner() {
                 Per-board activity breakdown for the selected week
               </p>
             </div>
+
+          {/* Filter chips — scope the Pulse report's per-board issue lists */}
+          <div className="flex flex-wrap gap-1.5">
+            {ALL_FILTERS.map(({ key, label }) => {
+              const active = activeFilters.includes(key)
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => toggleFilter(key)}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${
+                    active
+                      ? 'border-blue-500 bg-blue-100 text-blue-700'
+                      : 'border-border bg-surface-alt text-muted hover:bg-interactive-hover-bg'
+                  }`}
+                >
+                  {label}
+                </button>
+              )
+            })}
+            {activeFilters.length > 0 && (
+              <button
+                type="button"
+                onClick={() => replaceParams({ filter: '' })}
+                className="rounded-full border border-border px-3 py-1 text-xs text-muted hover:bg-interactive-hover-bg"
+              >
+                Clear filters
+              </button>
+            )}
+          </div>
 
           {/* Overall score + totals bar */}
           <div className="flex items-stretch gap-3">
