@@ -133,10 +133,11 @@ function supportTooltip(board: HealthCheckBoard): string {
   )
 }
 
-/** "X% (n of m)" support-load label for a team. */
-function supportText(board: HealthCheckBoard): string {
+/** Second-line count for the support-load cell (matches stability/roadmap layout). */
+function supportContext(board: HealthCheckBoard): string {
   const { support, total } = supportRatio(board)
-  return `${board.supportLoadScore}% (${support} of ${total})`
+  const basis = board.volume.boardType === 'kanban' ? 'completed' : ''
+  return `${support} of ${total}${basis ? ` ${basis}` : ''} support`
 }
 
 function OrgScore({
@@ -287,8 +288,8 @@ export function HealthCheckPanel({ report }: { report: HealthCheckReport }) {
                     <div className="mt-1 text-xs text-muted">{roadmapContext(board)}</div>
                   </td>
                   <td className="px-3 py-3">
-                    <ContextBadge text={supportText(board)} title={supportTooltip(board)} />
-                    <div className="mt-1 text-xs text-muted">context only</div>
+                    <ContextBadge text={`${board.supportLoadScore}%`} title={supportTooltip(board)} />
+                    <div className="mt-1 text-xs text-muted">{supportContext(board)}</div>
                   </td>
                   <td className="px-3 py-3">
                     <div className="flex items-center justify-center gap-3">

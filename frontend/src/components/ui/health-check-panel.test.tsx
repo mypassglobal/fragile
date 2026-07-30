@@ -52,14 +52,17 @@ describe('HealthCheckPanel', () => {
     expect(screen.getByText('6 of 8 completed on-roadmap')).toBeInTheDocument()
   })
 
-  it('shows the per-team support load as "X% (n of m)", not RAG-coloured', () => {
+  it('shows the per-team support load as a percentage pill with a count second line, not RAG-coloured', () => {
     render(<HealthCheckPanel report={makeReport()} />)
-    // 3 support of (18 committed + 2 added) = 20 items
-    const badge = screen.getByText('15% (3 of 20)')
-    expect(badge).toBeInTheDocument()
+    // pill shows the percentage only (org card also shows 15%, so match by class below)
+    const pills = screen.getAllByText('15%')
+    const badge = pills.find((el) => el.className.includes('text-muted'))
+    expect(badge).toBeDefined()
     // context styling — muted, not a RAG colour class
-    expect(badge.className).not.toMatch(/green|yellow|red/)
-    expect(badge.className).toContain('text-muted')
+    expect(badge!.className).not.toMatch(/green|yellow|red/)
+    expect(badge!.className).toContain('text-muted')
+    // second line carries the count: 3 support of (18 committed + 2 added) = 20 items
+    expect(screen.getByText('3 of 20 support')).toBeInTheDocument()
   })
 
   it('shows the org support load percentage and total count', () => {
@@ -118,8 +121,8 @@ describe('HealthCheckPanel', () => {
     render(<HealthCheckPanel report={report} />)
     expect(screen.getByText('pulled in 10 · completed 6')).toBeInTheDocument()
     // kanban support load uses the board-wide completed basis (proposal 0076 amendment):
-    // 3 support completed of 6 completed = 50%
-    expect(screen.getByText('50% (3 of 6)')).toBeInTheDocument()
+    // 3 support completed of 6 completed = 50%, count on the second line
+    expect(screen.getByText('3 of 6 completed support')).toBeInTheDocument()
   })
 
   it('shows the org overall stability and roadmap scores', () => {
