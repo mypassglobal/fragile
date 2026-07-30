@@ -1,7 +1,7 @@
 # 0076 — Support Load Metric & Health Check UI Overhaul
 
 **Date:** 2026-07-28
-**Status:** Accepted
+**Status:** Accepted (amended 2026-07-30 — kanban Support Load basis)
 **Author:** Architect Agent
 **Related ADRs:** Extends ADR 0065 (Engineering Health Check) and ADR 0067 (org scores + targets); ADR 0070 records the decision.
 
@@ -88,6 +88,70 @@ feeds a health/overall score or a RAG band.
 - `frontend/src/components/ui/health-check-panel.tsx` — Support Load column, org header,
   `TrendSparkline`, section header.
 - `frontend/src/app/all-items/page.tsx` — section separation between Health Check and Pulse.
+
+## Amendment (2026-07-30) — Kanban Support Load basis
+
+**Defect found in validation.** As originally shipped, `supportLoadScore` reads
+`summary.supportCount / summary.totalItems` for **all** board types. On kanban boards those
+two fields are **intake-scoped**: `totalItems` = issues *pulled onto the board this week*
+("Pulled In") and `supportCount` = support issues *among that pulled-in set*. This is
+inconsistent with the adjacent kanban stability and roadmap numbers, which use the
+**board-wide completed-this-week** basis (a kanban issue's `completedCount`/`onRoadmapCount`
+are already overridden to board-wide semantics — see `all-items.service.ts` and the DTO note on
+`AllItemsBoardSummary`). Two concrete problems for a fast-flow support team (e.g. PLAT):
+
+1. **Different question than its neighbours.** Kanban Support Load measured *intake mix* ("of
+   what entered the board this week, what share is support"), while stability/roadmap measure
+   *throughput* ("of what we finished"). A reader reasonably assumes a shared basis.
+2. **Understates real support load.** Support tickets that were *completed* this week but
+   *entered* in a prior week are counted in kanban `completedCount` but **not** in the
+   intake-scoped `supportCount` — so a busy support week can show ≈0% Support Load.
+
+**Decision (user-accepted — "Option A / board-wide completed").** For **kanban** boards,
+Support Load is computed on the **board-wide completed-this-week** basis, consistent with
+kanban stability/roadmap:
+
+- Numerator = board-wide issues that transitioned to Done this week **and** are flagged
+  `isSupport` (the same board-wide `completedIssues` set already classified in
+  `processBoardForWeek`).
+- Denominator = board-wide `completedCount` (Done-this-week count).
+- `supportLoadScore = completedCount === 0 ? 0 : round(supportCompletedCount / completedCount × 100)`.
+
+**Scrum** is **unchanged**: `supportLoadScore = totalItems === 0 ? 0 : round(supportCount / totalItems × 100)`
+(share of the sprint working set that is support).
+
+**The Pulse report is untouched.** `summary.supportCount` and `summary.totalItems` keep their
+existing intake semantics — the Pulse "Pulled In / Support" tiles and the org `totals.supportCount`
+sum are **not** changed. Support Load gets its own board-type-aware inputs so the two features
+do not collide.
+
+### Additive DTO fields (kanban basis)
+
+To carry the board-wide support-completed numerator without disturbing the Pulse counts, add to
+`AllItemsBoardSummary`:
+
+- `supportCompletedCount: number` — board-wide issues completed this week that are `isSupport`
+  (kanban); for scrum, equals `supportCount` within the working set that also completed — **but
+  scrum Support Load does not use it** (scrum keeps the `supportCount/totalItems` basis), so it
+  is populated for completeness/telemetry only.
+
+`supportLoad()` gains a board-type-aware call site:
+
+- scrum → `supportLoad(summary.supportCount, summary.totalItems)`
+- kanban → `supportLoad(summary.supportCompletedCount, summary.completedCount)`
+
+`overallSupportLoad` (mean of team `supportLoadScore`s) and the trend are unchanged in shape —
+they simply consume the corrected per-board score. `totalSupportCount` remains
+`sum(board.volume.support)` (intake volume across boards) — unchanged; it is a raw volume
+indicator, not a rate.
+
+### Additional Acceptance Criteria (amendment)
+
+- [ ] Kanban `supportLoadScore = completedCount === 0 ? 0 : round(supportCompletedCount/completedCount*100)`.
+- [ ] Scrum `supportLoadScore` is unchanged (`supportCount/totalItems`), verified by existing scrum tests.
+- [ ] `summary.supportCount`, `summary.totalItems`, and `totals.supportCount` are unchanged for kanban (Pulse report intact) — verified by unchanged Pulse tests.
+- [ ] A kanban board that completed support tickets which entered in a prior week reflects them in `supportLoadScore` (regression test for the understatement bug).
+- [ ] Each kanban `HealthCheckTrendPoint.supportLoadScore` uses the board-wide completed basis for that week.
 
 ## Alternatives Considered
 

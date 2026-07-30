@@ -222,11 +222,19 @@ export class AllItemsService {
   }
 
   /**
-   * Support load for a board: share of the week's working set that was support
-   * work (support / totalItems × 100). Context only (proposal 0076).
+   * Support load for a board (context only, proposal 0076).
+   * - Scrum: share of the sprint working set that is support work
+   *   (supportCount / totalItems × 100).
+   * - Kanban: share of the board-wide work completed this week that was support
+   *   (supportCompletedCount / completedCount × 100) — consistent with kanban
+   *   stability/roadmap, which also use the board-wide completed basis, and it
+   *   captures support that completed this week but entered in a prior week
+   *   (proposal 0076 amendment).
    */
   private supportLoadOf(board: BoardResultWithVolume): number {
-    return supportLoad(board.summary.supportCount, board.summary.totalItems);
+    return board.boardType === 'kanban'
+      ? supportLoad(board.summary.supportCompletedCount, board.summary.completedCount)
+      : supportLoad(board.summary.supportCount, board.summary.totalItems);
   }
 
   private async buildHealthCheck(
@@ -761,6 +769,12 @@ export class AllItemsService {
           inFlight: true,
         }));
       }
+
+      // Board-wide support-completed numerator for kanban Support Load
+      // (proposal 0076 amendment): the item list now contains every board-wide
+      // completer, correctly classified. This is consistent with completedCount
+      // and onRoadmapCount, which are also board-wide for kanban.
+      summary.supportCompletedCount = items.filter((i) => i.isSupport && i.completed).length;
     }
 
     // Apply filters after the kanban item list has been expanded with
@@ -775,7 +789,7 @@ export class AllItemsService {
     );
 
     const volume: HealthCheckVolume = isKanban
-      ? { boardType: 'kanban', pulledIn: summary.totalItems, completed: summary.completedCount, onRoadmap: summary.onRoadmapCount, support: summary.supportCount }
+      ? { boardType: 'kanban', pulledIn: summary.totalItems, completed: summary.completedCount, onRoadmap: summary.onRoadmapCount, support: summary.supportCount, supportCompleted: summary.supportCompletedCount }
       : {
           boardType: 'scrum',
           committed: scrumTotalCommitted,
@@ -1002,6 +1016,10 @@ export class AllItemsService {
       onRoadmapCount: items.filter((i) => i.onRoadmap).length,
       supportCount: items.filter((i) => i.isSupport).length,
       ttbSupportCount: items.filter((i) => i.isTtbSupport).length,
+      // Support items that also completed this week. For scrum this is the
+      // working-set intersection; kanban overrides it with the board-wide
+      // completed-support count after the completion scan (proposal 0076).
+      supportCompletedCount: items.filter((i) => i.isSupport && i.completed).length,
       inFlightCount: 0, // overridden for kanban boards after in-flight scan
     };
   }
@@ -1129,11 +1147,12 @@ export class AllItemsService {
       onRoadmapCount: 0,
       supportCount: 0,
       ttbSupportCount: 0,
+      supportCompletedCount: 0,
       inFlightCount: 0,
     };
     const volume: HealthCheckVolume =
       boardType === 'kanban'
-        ? { boardType: 'kanban', pulledIn: 0, completed: 0, onRoadmap: 0, support: 0 }
+        ? { boardType: 'kanban', pulledIn: 0, completed: 0, onRoadmap: 0, support: 0, supportCompleted: 0 }
         : { boardType: 'scrum', committed: 0, added: 0, completed: 0, onRoadmap: 0, support: 0 };
     return {
       boardId,

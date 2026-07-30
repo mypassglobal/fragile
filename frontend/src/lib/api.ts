@@ -1273,7 +1273,7 @@ export type HealthBand = 'healthy' | 'watch' | 'at-risk'
 
 export type HealthCheckVolume =
   | { boardType: 'scrum'; committed: number; added: number; completed: number; onRoadmap: number; support: number }
-  | { boardType: 'kanban'; pulledIn: number; completed: number; onRoadmap: number; support: number }
+  | { boardType: 'kanban'; pulledIn: number; completed: number; onRoadmap: number; support: number; supportCompleted: number }
 
 export interface HealthCheckTrendPoint {
   week: string

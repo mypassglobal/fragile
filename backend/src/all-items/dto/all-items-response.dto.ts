@@ -103,6 +103,15 @@ export interface AllItemsBoardSummary {
   supportCount: number;
   ttbSupportCount: number;
   /**
+   * Board-wide issues that completed this week AND are classified as support.
+   * Kanban: numerator for Support Load on the board-wide completed basis
+   * (proposal 0076 amendment) — consistent with kanban stability/roadmap, which
+   * also use the board-wide completed set. Scrum: support items in the working
+   * set that also completed this week (populated for telemetry; scrum Support
+   * Load uses supportCount/totalItems, not this field).
+   */
+  supportCompletedCount: number;
+  /**
    * Kanban only: count of on-board issues that are neither done nor cancelled —
    * i.e. currently being worked on. Always 0 for scrum boards.
    */
@@ -178,7 +187,7 @@ export type HealthBand = 'healthy' | 'watch' | 'at-risk';
  */
 export type HealthCheckVolume =
   | { boardType: 'scrum'; committed: number; added: number; completed: number; onRoadmap: number; support: number }
-  | { boardType: 'kanban'; pulledIn: number; completed: number; onRoadmap: number; support: number };
+  | { boardType: 'kanban'; pulledIn: number; completed: number; onRoadmap: number; support: number; supportCompleted: number };
 
 export interface HealthCheckTrendPoint {
   /** ISO week key, e.g. "2026-W19". */

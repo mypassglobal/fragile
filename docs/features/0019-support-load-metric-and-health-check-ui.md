@@ -87,3 +87,9 @@ None — resolved at intake:
   dependency is introduced.
 - Reuses the existing on-the-fly Health Check computation and 4-week trend machinery — no
   schema change, no persistence.
+- **Kanban basis (post-validation refinement, 2026-07-30):** validating against kanban boards
+  showed the initial `support / totalItems` basis was intake-scoped for kanban — inconsistent
+  with the board-wide completed basis of kanban stability/roadmap, and it understated support
+  for tickets completed this week that entered earlier. Kanban Support Load now uses
+  `supportCompletedCount / completedCount` (board-wide completed). Scrum unchanged; Pulse report
+  and org totals untouched. See proposal 0076 amendment and ADR 0070 amendment.

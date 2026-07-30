@@ -1,6 +1,6 @@
 # 0070 — Support Load as a Context Metric; Recharts Trend Sparklines
 
-**Date:** 2026-07-28
+**Date:** 2026-07-28 (amended 2026-07-30 — kanban Support Load basis)
 **Status:** Accepted
 **Deciders:** Architect Agent, Developer Agent
 **Proposal:** docs/proposals/0076-support-load-metric-and-health-check-ui.md
@@ -56,7 +56,36 @@ far more legible than the fixed-height bars.
   its own; readers must interpret the trend/share.
 - **Risks:** The metric's accuracy depends on per-board support classification config
   (`supportEpics`/`supportLabels`/`supportLinkTypes`); if unmaintained it partly measures Jira
-  hygiene. Validate config per board before treating it as a KPI.
+   hygiene. Validate config per board before treating it as a KPI.
+
+## Amendment (2026-07-30) — Kanban Support Load basis
+
+**Context.** As first shipped, `supportLoadScore` used `supportCount / totalItems` for **all**
+board types. On kanban boards those fields are **intake-scoped** (`totalItems` = issues *pulled
+onto the board this week*; `supportCount` = support among that pulled-in set), which (a) is
+inconsistent with the board-wide *completed-this-week* basis used by kanban stability and
+roadmap alignment, and (b) omits support tickets that completed this week but entered in a prior
+week — understating support load for fast-flow support teams (e.g. PLAT).
+
+**Decision.** For **kanban** boards, Support Load is computed on the **board-wide
+completed-this-week** basis, consistent with kanban stability/roadmap:
+`supportLoadScore = completedCount === 0 ? 0 : round(supportCompletedCount / completedCount × 100)`,
+where `supportCompletedCount` = board-wide issues that transitioned to Done this week and are
+classified as support. **Scrum is unchanged** (`supportCount / totalItems`). The Pulse report's
+intake-scoped `supportCount`/`totalItems` tiles and the org `totals.supportCount` are **not**
+changed — Support Load carries its own board-type-aware inputs (a new `supportCompletedCount`
+summary field and `volume.supportCompleted` for kanban). `overallSupportLoad` (mean of team
+percentages) and `totalSupportCount` (Σ intake support) are unchanged in shape. The `n of m`
+label and tooltip in the panel follow the same basis (kanban shows *support completed of
+completed*).
+
+**Rationale.** Makes the three per-team dimensions share a basis on kanban and answers the more
+useful question for a support team ("of what we finished, how much was support"), while
+preserving the Pulse report's separate intake semantics.
+
+**Consequences.** Kanban Support Load now reflects support throughput, not intake; a kanban week
+with no completions reports 0% (divide-by-zero guard). One additive summary field and one
+additive kanban `volume` field; no schema change, no new dependency.
 
 ## Related Decisions
 

@@ -109,16 +109,17 @@ describe('HealthCheckPanel', () => {
           roadmapScore: 50,
           roadmapBand: 'at-risk',
           roadmapDeliveryTarget: 50,
-          supportLoadScore: 30,
-          volume: { boardType: 'kanban', pulledIn: 10, completed: 6, onRoadmap: 3, support: 3 },
-          trend: [{ week: '2026-W20', stabilityScore: 60, roadmapScore: 50, supportLoadScore: 30 }],
+          supportLoadScore: 50,
+          volume: { boardType: 'kanban', pulledIn: 10, completed: 6, onRoadmap: 3, support: 3, supportCompleted: 3 },
+          trend: [{ week: '2026-W20', stabilityScore: 60, roadmapScore: 50, supportLoadScore: 50 }],
         },
       ],
     })
     render(<HealthCheckPanel report={report} />)
     expect(screen.getByText('pulled in 10 · completed 6')).toBeInTheDocument()
-    // kanban support load uses pulled-in as the denominator
-    expect(screen.getByText('30% (3 of 10)')).toBeInTheDocument()
+    // kanban support load uses the board-wide completed basis (proposal 0076 amendment):
+    // 3 support completed of 6 completed = 50%
+    expect(screen.getByText('50% (3 of 6)')).toBeInTheDocument()
   })
 
   it('shows the org overall stability and roadmap scores', () => {

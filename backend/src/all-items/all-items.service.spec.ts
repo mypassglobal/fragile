@@ -1860,6 +1860,74 @@ describe('AllItemsService', () => {
       expect(result.healthCheck?.totalSupportCount).toBe(2);
     });
 
+    it('kanban supportLoadScore uses the board-wide completed basis, not pulled-in intake (proposal 0076 amendment)', async () => {
+      // 4 items entered THIS week, none support, none done.
+      // 2 support items entered in a PRIOR week and completed THIS week.
+      // Old (intake) basis: pulled-in support 0 / totalItems 4 = 0% (understated).
+      // Fixed (board-wide completed) basis: 2 support completed / 2 completed = 100%.
+      const kanbanBoard = makeBoard({ boardId: 'PLAT', boardType: 'kanban', supportLabels: ['support'] });
+      const enteredThisWeek = Array.from({ length: 4 }, (_, i) =>
+        makeIssue({ key: `PLAT-${i + 1}`, boardId: 'PLAT' }),
+      );
+      const supportFromPriorWeek = [
+        makeIssue({ key: 'PLAT-10', boardId: 'PLAT', status: 'Done', labels: ['support'] }),
+        makeIssue({ key: 'PLAT-11', boardId: 'PLAT', status: 'Done', labels: ['support'] }),
+      ];
+      const allIssues = [...enteredThisWeek, ...supportFromPriorWeek];
+
+      const entryThisWeekCls = enteredThisWeek.map((iss, i) =>
+        makeChangelog({
+          id: i + 1,
+          issueKey: iss.key,
+          field: 'status',
+          fromValue: null,
+          toValue: 'To Do',
+          changedAt: new Date('2026-05-12T08:00:00Z'), // W20
+        }),
+      );
+      const entryPriorCls = supportFromPriorWeek.map((iss, i) =>
+        makeChangelog({
+          id: i + 20,
+          issueKey: iss.key,
+          field: 'status',
+          fromValue: null,
+          toValue: 'To Do',
+          changedAt: new Date('2026-04-28T08:00:00Z'), // prior week
+        }),
+      );
+      const doneCls = supportFromPriorWeek.map((iss, i) =>
+        makeChangelog({
+          id: i + 30,
+          issueKey: iss.key,
+          field: 'status',
+          fromValue: 'In Progress',
+          toValue: 'Done',
+          changedAt: new Date('2026-05-13T15:00:00Z'), // W20 completion
+        }),
+      );
+
+      boardConfigRepo.find.mockResolvedValue([kanbanBoard]);
+      issueRepo.find.mockResolvedValue(allIssues);
+      sprintRepo.createQueryBuilder.mockReturnValue(makeQb([]));
+      roadmapConfigRepo.find.mockResolvedValue([]);
+      changelogRepo.createQueryBuilder.mockReturnValue(
+        makeQb([...entryThisWeekCls, ...entryPriorCls, ...doneCls]),
+      );
+      issueLinkRepo.createQueryBuilder.mockReturnValue(makeQb([]));
+      jpdIdeaRepo.find.mockResolvedValue([]);
+
+      const result = await service.getAllItems('2026-W20', undefined);
+      const board = result.healthCheck?.boards[0];
+
+      // Support Load reflects support completed this week (board-wide), = 100%.
+      expect(board?.supportLoadScore).toBe(100);
+      // Pulse report intact: pulled-in totalItems still 4, intake supportCount still 0.
+      expect(result.boards[0].summary.totalItems).toBe(4);
+      expect(result.boards[0].summary.supportCount).toBe(0);
+      // Board-wide support-completed numerator carried on the summary.
+      expect(result.boards[0].summary.supportCompletedCount).toBe(2);
+    });
+
     it('support load does not affect overall stability or roadmap scores', async () => {
       setupSupportBoard(['ACC-1', 'ACC-2', 'ACC-3', 'ACC-4'], ['ACC-1', 'ACC-2', 'ACC-3', 'ACC-4']); // 100% support
 

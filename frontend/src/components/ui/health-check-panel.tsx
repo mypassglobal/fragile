@@ -110,23 +110,33 @@ const ORG_SUPPORT_TOOLTIP =
   'Org support load: the average of each team\u2019s support-load percentage. Context only — not ' +
   'part of the health score, since support demand is largely inbound and not team-controlled.'
 
+/**
+ * Support-load numerator/denominator for the "n of m" label — matched to the
+ * basis used for supportLoadScore (proposal 0076 amendment):
+ * - scrum: support ÷ (committed + added) working set
+ * - kanban: support completed ÷ completed this week (board-wide)
+ */
+function supportRatio(board: HealthCheckBoard): { support: number; total: number } {
+  if (board.volume.boardType === 'scrum') {
+    return { support: board.volume.support, total: board.volume.committed + board.volume.added }
+  }
+  return { support: board.volume.supportCompleted, total: board.volume.completed }
+}
+
 /** Per-team support-load tooltip. */
 function supportTooltip(board: HealthCheckBoard): string {
-  const total = board.volume.boardType === 'scrum'
-    ? board.volume.committed + board.volume.added
-    : board.volume.pulledIn
+  const { support, total } = supportRatio(board)
+  const basis = board.volume.boardType === 'kanban' ? 'completed this week' : 'items this week'
   return (
-    `Support load: ${board.volume.support} of ${total} items this week were support/reactive ` +
+    `Support load: ${support} of ${total} ${basis} were support/reactive ` +
     `(${board.supportLoadScore}%). Shown as context — not part of the health score.`
   )
 }
 
 /** "X% (n of m)" support-load label for a team. */
 function supportText(board: HealthCheckBoard): string {
-  const total = board.volume.boardType === 'scrum'
-    ? board.volume.committed + board.volume.added
-    : board.volume.pulledIn
-  return `${board.supportLoadScore}% (${board.volume.support} of ${total})`
+  const { support, total } = supportRatio(board)
+  return `${board.supportLoadScore}% (${support} of ${total})`
 }
 
 function OrgScore({
