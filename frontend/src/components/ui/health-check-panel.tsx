@@ -136,8 +136,7 @@ function supportTooltip(board: HealthCheckBoard): string {
 /** Second-line count for the support-load cell (matches stability/roadmap layout). */
 function supportContext(board: HealthCheckBoard): string {
   const { support, total } = supportRatio(board)
-  const basis = board.volume.boardType === 'kanban' ? 'completed' : ''
-  return `${support} of ${total}${basis ? ` ${basis}` : ''} support`
+  return `${support} of ${total} support`
 }
 
 function OrgScore({

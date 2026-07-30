@@ -122,7 +122,7 @@ describe('HealthCheckPanel', () => {
     expect(screen.getByText('pulled in 10 · completed 6')).toBeInTheDocument()
     // kanban support load uses the board-wide completed basis (proposal 0076 amendment):
     // 3 support completed of 6 completed = 50%, count on the second line
-    expect(screen.getByText('3 of 6 completed support')).toBeInTheDocument()
+    expect(screen.getByText('3 of 6 support')).toBeInTheDocument()
   })
 
   it('shows the org overall stability and roadmap scores', () => {
