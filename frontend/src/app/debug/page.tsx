@@ -14,12 +14,16 @@ import { useReplaceParams } from '@/hooks/use-page-params'
 import { DataTable, type Column } from '@/components/ui/data-table'
 import {
   getIssueDebug,
+  getSnapshotStatus,
+  getSyncStatus,
   ApiError,
   type IssueDebugResponse,
   type IssueDebugChangelogEntry,
   type IssueDebugSprintMembership,
   type IssueDebugLink,
   type IssueDebugRoadmapIdea,
+  type BoardSnapshotStatus,
+  type SyncStatusItem,
 } from '@/lib/api'
 
 type PageState =
@@ -72,6 +76,95 @@ const ideaColumns: Column<IssueDebugRoadmapIdea>[] = [
   { key: 'targetDate', label: 'Target', render: (_v, r) => r.targetDate ?? '—' },
 ]
 
+const snapshotColumns: Column<BoardSnapshotStatus>[] = [
+  { key: 'boardId', label: 'Board', sortable: true },
+  { key: 'computedAt', label: 'Computed At', sortable: true, render: (_v, r) => r.computedAt ?? '—' },
+  {
+    key: 'isStale',
+    label: 'Freshness',
+    render: (_v, r) => (r.isStale === null ? '—' : r.isStale ? 'stale' : 'fresh'),
+  },
+  { key: 'hasAggregate', label: 'Aggregate', render: (_v, r) => (r.hasAggregate ? 'yes' : 'no') },
+  { key: 'hasTrend', label: 'Trend', render: (_v, r) => (r.hasTrend ? 'yes' : 'no') },
+]
+
+const syncColumns: Column<SyncStatusItem>[] = [
+  { key: 'boardId', label: 'Board', sortable: true },
+  { key: 'lastSync', label: 'Last Sync', sortable: true, render: (_v, r) => r.lastSync ?? '—' },
+  { key: 'status', label: 'Status', sortable: true },
+  { key: 'syncType', label: 'Type', render: (_v, r) => r.syncType ?? '—' },
+]
+
+type LoadState<T> =
+  | { status: 'loading' }
+  | { status: 'ready'; data: T[] }
+  | { status: 'error'; message: string }
+
+/** Loads a list once on mount; each caller owns its own state so one section
+ *  failing never affects the others or the ticket inspector. */
+function useList<T extends object>(fetcher: () => Promise<T[]>): LoadState<T> {
+  const [state, setState] = useState<LoadState<T>>({ status: 'loading' })
+  useEffect(() => {
+    let cancelled = false
+    fetcher()
+      .then((data) => {
+        if (!cancelled) setState({ status: 'ready', data })
+      })
+      .catch((err: unknown) => {
+        if (!cancelled)
+          setState({
+            status: 'error',
+            message: err instanceof Error ? err.message : 'Failed to load',
+          })
+      })
+    return () => {
+      cancelled = true
+    }
+    // fetcher is a module-level function reference — stable across renders.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+  return state
+}
+
+function ListSection<T extends object>({
+  title,
+  state,
+  columns,
+}: {
+  title: string
+  state: LoadState<T>
+  columns: Column<T>[]
+}) {
+  if (state.status === 'loading') {
+    return (
+      <Section title={title}>
+        <p className="text-sm text-muted">Loading…</p>
+      </Section>
+    )
+  }
+  if (state.status === 'error') {
+    return (
+      <Section title={title}>
+        <div className="rounded-lg border border-red-500/40 bg-red-500/10 p-4 text-sm">
+          <p className="text-red-700 dark:text-red-300">{state.message}</p>
+        </div>
+      </Section>
+    )
+  }
+  if (state.data.length === 0) {
+    return (
+      <Section title={title} count={0}>
+        <p className="text-sm text-muted">No data.</p>
+      </Section>
+    )
+  }
+  return (
+    <Section title={title} count={state.data.length}>
+      <DataTable columns={columns} data={state.data} />
+    </Section>
+  )
+}
+
 function IssueFields({ data }: { data: IssueDebugResponse }) {
   const entries = Object.entries(data.issue)
   return (
@@ -93,6 +186,9 @@ function DebugPageInner() {
   const keyParam = searchParams.get('key') ?? ''
   const [input, setInput] = useState(keyParam)
   const [pageState, setPageState] = useState<PageState>({ status: 'idle' })
+
+  const snapshotState = useList<BoardSnapshotStatus>(getSnapshotStatus)
+  const syncState = useList<SyncStatusItem>(getSyncStatus)
 
   const submit = useCallback((e: FormEvent) => {
     e.preventDefault()
@@ -205,6 +301,9 @@ function DebugPageInner() {
           </details>
         </div>
       )}
+
+      <ListSection title="Snapshots" state={snapshotState} columns={snapshotColumns} />
+      <ListSection title="Sync status" state={syncState} columns={syncColumns} />
     </div>
   )
 }

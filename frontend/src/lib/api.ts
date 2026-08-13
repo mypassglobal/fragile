@@ -2,7 +2,7 @@
 // API client – typed wrappers for every backend endpoint
 // ---------------------------------------------------------------------------
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:3001';
 
 // ---- Shared types --------------------------------------------------------
 
@@ -204,6 +204,21 @@ export function triggerSync(mode: SyncMode = 'full'): Promise<{ message: string 
 
 export function getSyncStatus(): Promise<SyncStatusResponse> {
   return apiFetch('/api/sync/status');
+}
+
+// Per-board DORA snapshot status. Metadata only — no payload.
+// `computedAt` is a JSON-serialised timestamp (Date on the backend).
+export interface BoardSnapshotStatus {
+  boardId: string;
+  computedAt: string | null;
+  ageSeconds: number | null;
+  isStale: boolean | null;
+  hasAggregate: boolean;
+  hasTrend: boolean;
+}
+
+export function getSnapshotStatus(): Promise<BoardSnapshotStatus[]> {
+  return apiFetch('/api/metrics/dora/snapshot/status');
 }
 
 export function getBoards(): Promise<BoardsResponse> {

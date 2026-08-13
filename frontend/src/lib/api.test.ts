@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { apiFetch, ApiError, getDoraAggregate, getDoraTrend, getIssueDebug, triggerSync } from './api';
+import { apiFetch, ApiError, getDoraAggregate, getDoraTrend, getIssueDebug, getSnapshotStatus, triggerSync } from './api';
 
 // Mock fetch globally
 const mockFetch = vi.fn();
@@ -180,6 +180,40 @@ describe('getIssueDebug', () => {
       text: () => Promise.resolve('No stored data'),
     });
     await expect(getIssueDebug('NOPE-1')).rejects.toMatchObject({ status: 404 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+
+describe('getSnapshotStatus', () => {
+  beforeEach(() => {
+    mockFetch.mockReset();
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve([]) });
+  });
+
+  it('requests the snapshot status endpoint', async () => {
+    await getSnapshotStatus();
+    const [url] = mockFetch.mock.calls[0] as [string];
+    expect(url).toContain('/api/metrics/dora/snapshot/status');
+  });
+
+  it('returns the parsed board snapshot status array', async () => {
+    mockFetch.mockResolvedValueOnce({
+      ok: true,
+      json: () =>
+        Promise.resolve([
+          {
+            boardId: 'ACC',
+            computedAt: '2026-08-13T00:00:00.000Z',
+            ageSeconds: 120,
+            isStale: false,
+            hasAggregate: true,
+            hasTrend: true,
+          },
+        ]),
+    });
+    const result = await getSnapshotStatus();
+    expect(result[0]).toMatchObject({ boardId: 'ACC', hasAggregate: true, isStale: false });
   });
 });
 
