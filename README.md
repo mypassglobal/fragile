@@ -42,6 +42,16 @@ Admin users can manage board configuration, trigger syncs, and promote other use
 
 ## Features
 
+### Healthcheck
+
+The Healthcheck page is the landing view — a weekly org-wide engineering scorecard. For a
+selected ISO week it pools three scores across all contributing boards: **Stability** (share of
+started tickets that were committed or carried over at sprint start; Scrum only), **Roadmap**
+(share of started tickets linked to a JPD idea; Scrum only), and **Support** (share of started
+tickets classified as reactive support; all boards, lower is better). Each score pools
+numerators and denominators across boards, and an 8-week trend is shown alongside. Weeks with no
+qualifying tickets render as N/A rather than zero.
+
 ### DORA Metrics
 
 The DORA page shows all four DORA metrics — Deployment Frequency, Lead Time for Changes, Change
@@ -57,6 +67,14 @@ DORA band. Epics and sub-tasks are excluded from all cycle time calculations. Su
 filtering and week/quarter time range toggles. Cycle times are measured in **working days** by
 default (weekends and configured public holidays excluded); the unit label adapts to "calendar days"
 when weekend exclusion is disabled.
+
+### Support
+
+The Support page reports reactive support load across boards. Tickets are classified as support
+via per-board rules (issue type, label, or link), and the page shows the percentage of work that
+was reactive support alongside p50 and p95 support cycle times, with a per-board breakdown. Like
+DORA and Cycle Time, it supports quarter, sprint, explicit date range, and rolling time-period
+(7/30/90-day) views.
 
 ### Planning (Sprint)
 
@@ -84,6 +102,13 @@ The Roadmap page tracks whether delivered issues were backed by an active Jira P
 A JPD idea is considered active only during its `startDate`–`targetDate` window. Both dates are
 read from tenant-specific Polaris interval custom fields, configured in the Settings UI.
 
+### Issue Gaps
+
+The Gaps page surfaces hygiene problems in open work: issues missing an epic link or a story
+point estimate, and issues that were completed without ever being planned into a sprint
+("unplanned done"). It is a backlog-quality checklist rather than a metric — the same signals
+feed the Healthcheck Stability score.
+
 ### Settings
 
 The Settings page exposes per-board configuration (done status names, in-progress status names,
@@ -107,6 +132,20 @@ MTTR is measured in **calendar hours** (incidents are production events that do 
 weekends). Deployment frequency uses **calendar days** (unchanged). Weekend exclusion and the
 working-day definition are configurable via the `workingTime:` stanza in `boards.yaml` or through
 `GET /api/config`.
+
+### Admin tools
+
+Three admin-only pages (visible only to users with the `admin` role) support operating the
+dashboard:
+
+- **API Keys** (`/api-keys`) — generate, list, and revoke personal API keys used to authenticate
+  programmatic access such as the MCP server. Keys are shown once at creation and carry the
+  creating user's access level. See [AI Assistant Integration (MCP)](#ai-assistant-integration-mcp).
+- **Users** (`/users`) — view all users and promote them between the `user` (read-only) and
+  `admin` roles. The first user to log in is auto-promoted to admin.
+- **Debug** (`/debug`) — inspect everything stored in the PostgreSQL mirror for a single Jira
+  ticket (issue row, changelog, sprint memberships, issue links, linked roadmap ideas), plus
+  per-board DORA snapshot status and sync status. Read-only; reflects the cache, not live Jira.
 
 ---
 
@@ -168,7 +207,7 @@ Restart the client. The Fragile tools appear in the tool picker immediately.
 | `API_BASE_URL` | **Yes** | Base URL of the Fragile API, e.g. `https://api.your-fragile-domain.com` or `http://localhost:3001` for local use |
 | `API_KEY` | **Yes** | A personal Fragile API key (generated in the app under **API Keys**). Sent as `Authorization: Bearer <key>`. The API requires authentication — an unset/invalid key returns 401. |
 
-### Available tools (16)
+### Available tools (19)
 
 | Category | Tools |
 |---|---|
@@ -176,6 +215,8 @@ Restart the client. The Fragile tools appear in the tool picker immediately.
 | **Planning** | `get_planning_accuracy`, `list_sprints`, `list_quarters` |
 | **Cycle time** | `get_cycle_time`, `get_cycle_time_trend` |
 | **Sprint** | `get_sprint_detail`, `get_sprint_report` |
+| **Support** | `get_support_tickets`, `get_support_summary` |
+| **Healthcheck** | `get_healthcheck_report` |
 | **Roadmap** | `get_roadmap_accuracy` |
 | **Boards** | `list_boards`, `get_board_config` |
 | **Sync** | `get_sync_status` |
@@ -1056,18 +1097,29 @@ fragile/
 │   │   ├── roadmap.example.yaml# Annotated roadmap config template (tracked in git)
 │   │   └── roadmap.yaml        # Live JPD date-field mappings — created from example
 │   ├── src/
+│   │   ├── api-keys/           # Personal API key issue/list/revoke (controller + service)
+│   │   ├── auth/               # Google SSO, session cookies, role guards
 │   │   ├── boards/             # Board config CRUD (controller + service)
 │   │   ├── database/
 │   │   │   └── entities/       # TypeORM entity classes
+│   │   ├── debug/              # Ticket inspector (GET /api/debug/issue/:key)
+│   │   ├── gaps/               # Hygiene gaps + unplanned-done services
 │   │   ├── health/             # GET /health (unguarded)
+│   │   ├── healthcheck/        # Weekly org engineering scorecard
 │   │   ├── jira/               # Typed Jira API client — all Jira HTTP calls live here
+│   │   ├── lambda/             # DORA snapshot Lambda handler (prod post-sync compute)
 │   │   ├── metrics/            # DORA metrics and cycle time services + controllers
 │   │   ├── migrations/         # TypeORM migration files (reversible up + down)
 │   │   ├── planning/           # Sprint and Kanban planning services + controllers
 │   │   ├── quarter/            # Quarter detail view service
 │   │   ├── roadmap/            # Roadmap accuracy service + controller
+│   │   ├── snapshot/           # Snapshot compute orchestration (shared writer)
 │   │   ├── sprint/             # Sprint detail view service
+│   │   ├── sprint-membership/  # SprintMembershipService — changelog reconstruction
+│   │   ├── sprint-report/      # Composite sprint report service
+│   │   ├── support/            # Reactive support classification + summary
 │   │   ├── sync/               # Jira sync orchestration service + controller
+│   │   ├── users/              # User listing + role management
 │   │   ├── week/               # Week detail view service
 │   │   ├── yaml-config/        # YamlConfigService — reads boards.yaml + roadmap.yaml at startup
 │   │   ├── app.module.ts
@@ -1078,11 +1130,17 @@ fragile/
 ├── frontend/                   # Next.js 16 app (port 3000)
 │   ├── src/
 │   │   ├── app/                # Next.js App Router pages
+│   │   │   ├── healthcheck/    # Weekly org engineering scorecard (landing page)
 │   │   │   ├── dora/           # DORA metrics dashboard
 │   │   │   ├── cycle-time/     # Cycle time scatter plot
+│   │   │   ├── support/        # Reactive support load
 │   │   │   ├── planning/       # Sprint + Kanban planning
 │   │   │   ├── roadmap/        # Roadmap accuracy
-│   │   │   └── settings/       # Board and roadmap config
+│   │   │   ├── gaps/           # Issue hygiene gaps
+│   │   │   ├── api-keys/       # Personal API key management (admin)
+│   │   │   ├── users/          # User role management (admin)
+│   │   │   ├── debug/          # Ticket / snapshot / sync inspector (admin)
+│   │   │   └── settings/       # Board and roadmap config (admin)
 │   │   ├── components/         # Shared React components
 │   │   │   └── layout/         # Sidebar, shell
 │   │   ├── lib/                # Typed API client, utility functions
@@ -1137,7 +1195,14 @@ names in PostgreSQL.
 | `JiraIssueLink` | `jira_issue_links` | `id` (PK, auto), `sourceIssueKey`, `targetIssueKey`, `linkTypeName`, `isInward` | Issue-to-issue links; used for CFR causal links and roadmap delivery links |
 | `JpdIdea` | `jpd_ideas` | `key` (PK), `jpdKey`, `deliveryIssueKeys`, `startDate`, `targetDate`, `syncedAt` | JPD idea snapshots with delivery epic links and active date window |
 | `RoadmapConfig` | `roadmap_configs` | `id` (PK, auto), `jpdKey` (unique), `startDateFieldId`, `targetDateFieldId` | Per-JPD-project custom field IDs for extracting idea dates |
-| `SyncLog` | `sync_logs` | `id` (PK, auto), `boardId`, `syncedAt`, `issueCount`, `status`, `errorMessage` | Audit trail of sync runs per board |
+| `SyncLog` | `sync_logs` | `id` (PK, auto), `boardId`, `syncedAt`, `issueCount`, `status`, `syncType`, `errorMessage` | Audit trail of sync runs per board |
+| `DoraSnapshot` | `dora_snapshots` | `boardId` + `snapshotType` (composite PK), `payload` (jsonb), `computedAt` | Pre-computed DORA aggregate/trend results, refreshed post-sync |
+| `CycleTimeSnapshot` | `cycle_time_snapshots` | composite key, `payload` (jsonb), `computedAt` | Pre-computed cycle-time results per period/window |
+| `SupportSnapshot` | `support_snapshots` | composite key, `payload` (jsonb), `computedAt` | Pre-computed support-load results per period/window |
+| `SprintReport` | `sprint_reports` | `id` (PK), `boardId`, `sprintId`, cached composite scores | Cached composite sprint report data |
+| `JiraIssueSprint` | `jira_issue_sprints` | `issueKey` + `sprintId` | Multi-sprint membership join (reconstructed from changelog) |
+| `User` | `users` | `id` (PK), `email` (unique), `role`, `name`, `avatarUrl` | SSO-authenticated user with `user` or `admin` role |
+| `ApiKey` | `api_keys` | `id` (PK), `userId`, `name`, `hashedKey`, `createdAt`, `lastUsedAt` | Personal API keys (hash stored, raw shown once) for programmatic access |
 
 ---
 

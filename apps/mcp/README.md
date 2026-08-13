@@ -1,9 +1,9 @@
 # @fragile.app/mcp
 
 MCP (Model Context Protocol) server for the [Fragile](https://github.com/your-org/fragile)
-engineering metrics dashboard. Exposes 29 tools (16 read-only metrics tools + 13 custom
-report management tools), 2 resources, and 4 prompt templates over stdio — compatible with
-Claude Desktop, Cursor, GitHub Copilot agent mode, and any other MCP-compatible AI client.
+engineering metrics dashboard. Exposes 19 read-only tools, 2 resources, and 4 prompt templates
+over stdio — compatible with Claude Desktop, Cursor, GitHub Copilot agent mode, and any other
+MCP-compatible AI client.
 
 ## What it does
 
@@ -61,12 +61,16 @@ Add the following to `.cursor/mcp.json` in your home directory or project root:
       "command": "npx",
       "args": ["-y", "@fragile.app/mcp"],
       "env": {
-        "API_BASE_URL": "https://api.your-fragile-domain.com"
+        "API_BASE_URL": "https://api.your-fragile-domain.com",
+        "API_KEY": "frg_your_generated_key"
       }
     }
   }
 }
 ```
+
+> **Generating a key:** same as Claude Desktop — open **API Keys** in the Fragile web app,
+> click **Generate key**, and copy it immediately.
 
 ## Available tools
 
@@ -82,6 +86,9 @@ Add the following to `.cursor/mcp.json` in your home directory or project root:
 | `get_cycle_time_trend` | Cycle time trend by quarter, sprint, or rolling time-period buckets |
 | `get_sprint_detail` | Ticket-level sprint classification |
 | `get_sprint_report` | Composite sprint report with recommendations |
+| `get_support_tickets` | Support ticket observations (cycle time, match reason) for a period |
+| `get_support_summary` | Aggregated support load (% support, p50/p95 cycle time, per-board breakdown) |
+| `get_healthcheck_report` | Weekly org-wide engineering scorecard (Stability, Roadmap, Support) with 8-week trend |
 | `get_roadmap_accuracy` | Roadmap coverage accuracy |
 | `list_boards` | All configured boards |
 | `get_board_config` | Full board configuration |

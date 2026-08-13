@@ -6,6 +6,7 @@ import {
   getApiKeys,
   createApiKey,
   revokeApiKey,
+  API_URL,
   type ApiKeyMetadata,
   type CreatedApiKey,
 } from '@/lib/api'
@@ -19,6 +20,8 @@ export default function ApiKeysPage() {
   const [created, setCreated] = useState<CreatedApiKey | null>(null)
   const [copied, setCopied] = useState(false)
   const [revokingId, setRevokingId] = useState<string | null>(null)
+
+  const apiBaseUrl = API_URL
 
   const load = useCallback(() => {
     getApiKeys()
@@ -82,6 +85,52 @@ export default function ApiKeysPage() {
           server). Keys carry your access level and are shown only once.
         </p>
       </div>
+
+      {/* How to use with Claude (MCP) */}
+      <details className="rounded-xl border border-border bg-card shadow-sm">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
+          Use this key with Claude (MCP)
+        </summary>
+        <div className="space-y-3 border-t border-border px-4 py-3 text-sm text-muted">
+          <p>
+            The Fragile MCP server lets Claude query these metrics directly. Generate a key
+            below, then add the server to Claude Desktop.
+          </p>
+          <ol className="list-decimal space-y-1 pl-5">
+            <li>Generate a key below and copy it (shown only once).</li>
+            <li>
+              Open your Claude Desktop config:
+              <code className="ml-1 rounded bg-interactive-hover-bg px-1.5 py-0.5 font-mono text-xs">
+                ~/Library/Application Support/Claude/claude_desktop_config.json
+              </code>{' '}
+              (macOS) or{' '}
+              <code className="rounded bg-interactive-hover-bg px-1.5 py-0.5 font-mono text-xs">
+                %APPDATA%\Claude\claude_desktop_config.json
+              </code>{' '}
+              (Windows).
+            </li>
+            <li>Add the <code className="font-mono text-xs">fragile</code> server, then restart Claude Desktop.</li>
+          </ol>
+          <pre className="overflow-x-auto rounded-lg border border-border bg-background px-3 py-3 font-mono text-xs text-foreground">
+{`{
+  "mcpServers": {
+    "fragile": {
+      "command": "npx",
+      "args": ["-y", "@fragile.app/mcp"],
+      "env": {
+        "API_BASE_URL": "${apiBaseUrl}",
+        "API_KEY": "frg_your_generated_key"
+      }
+    }
+  }
+}`}
+          </pre>
+          <p>
+            Replace <code className="font-mono text-xs">frg_your_generated_key</code> with the
+            key you generated. The Fragile tools then appear in Claude&apos;s tool picker.
+          </p>
+        </div>
+      </details>
 
       {/* Create */}
       <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
