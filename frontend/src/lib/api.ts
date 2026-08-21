@@ -1273,9 +1273,16 @@ export interface HealthcheckResponse {
   tickets: HealthcheckTicket[]
 }
 
-export function getHealthcheck(week?: string): Promise<HealthcheckResponse> {
+export function getHealthcheck(
+  week?: string,
+  includeSupport = true,
+): Promise<HealthcheckResponse> {
   return apiFetch<HealthcheckResponse>(
-    `/api/healthcheck${toQueryString({ week })}`,
+    `/api/healthcheck${toQueryString({
+      week,
+      // Only send when off — the backend defaults to including support.
+      includeSupport: includeSupport ? undefined : 'false',
+    })}`,
   )
 }
 

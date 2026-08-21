@@ -25,6 +25,6 @@ export class HealthcheckController {
       'Defaults to the last completed week when `week` is omitted.',
   })
   async getHealthcheck(@Query() query: HealthcheckQueryDto): Promise<HealthcheckResponse> {
-    return this.healthcheckService.getHealthcheck(query.week);
+    return this.healthcheckService.getHealthcheck(query.week, query.includeSupport);
   }
 }

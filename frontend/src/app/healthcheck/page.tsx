@@ -12,6 +12,7 @@ import { useSearchParams } from 'next/navigation'
 import { useReplaceParams } from '@/hooks/use-page-params'
 import {
   getHealthcheck,
+  getAppConfig,
   type HealthcheckResponse,
 } from '@/lib/api'
 import {
@@ -90,8 +91,21 @@ function HealthcheckPageInner() {
   const searchParams = useSearchParams()
   const replaceParams = useReplaceParams()
 
-  const defaultWeek = useMemo(() => lastCompletedWeekFn(), [])
+  // Server timezone drives which week is "last completed" — computing it in the
+  // browser's UTC frame would mis-default the week near the week boundary.
+  const [timezone, setTimezone] = useState('UTC')
+  useEffect(() => {
+    getAppConfig()
+      .then((cfg) => setTimezone(cfg.timezone))
+      .catch(() => { /* fall back to UTC */ })
+  }, [])
+
+  const defaultWeek = useMemo(() => lastCompletedWeekFn(timezone), [timezone])
   const weekParam = searchParams.get('week') ?? defaultWeek
+
+  // Support inclusion toggle — on by default. Off is carried as ?includeSupport=false
+  // so the choice is shareable and reload-safe.
+  const includeSupport = searchParams.get('includeSupport') !== 'false'
 
   const [pageState, setPageState] = useState<PageState>({ status: 'idle' })
   const [retryKey, setRetryKey] = useState(0)
@@ -102,7 +116,7 @@ function HealthcheckPageInner() {
       replaceParams({ week: defaultWeek })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, [defaultWeek])
 
   useEffect(() => {
     if (!weekParam.match(/^\d{4}-W\d{2}$/)) return
@@ -110,7 +124,7 @@ function HealthcheckPageInner() {
     let cancelled = false
     setPageState({ status: 'loading' })
 
-    getHealthcheck(weekParam)
+    getHealthcheck(weekParam, includeSupport)
       .then((data) => {
         if (!cancelled) setPageState({ status: 'ready', data })
       })
@@ -126,7 +140,7 @@ function HealthcheckPageInner() {
     return () => {
       cancelled = true
     }
-  }, [weekParam, retryKey])
+  }, [weekParam, includeSupport, retryKey])
 
   const isLatestWeek = weekParam === defaultWeek
 
@@ -144,7 +158,7 @@ function HealthcheckPageInner() {
       </div>
 
       {/* Week nav */}
-      <div className="flex items-center gap-1.5">
+      <div className="flex flex-wrap items-center gap-1.5">
         <button
           type="button"
           onClick={() => replaceParams({ week: prevWeek(weekParam) })}
@@ -174,6 +188,21 @@ function HealthcheckPageInner() {
             Latest
           </button>
         )}
+
+        {/* Support-inclusion toggle — on by default (no change). */}
+        <label className="ml-auto flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            checked={includeSupport}
+            onChange={(e) =>
+              replaceParams({
+                includeSupport: e.target.checked ? null : 'false',
+              })
+            }
+            className="h-4 w-4"
+          />
+          <span>Include support tickets in Stability &amp; Roadmap</span>
+        </label>
       </div>
 
       {/* Body */}

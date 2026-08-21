@@ -85,7 +85,10 @@ export class HealthcheckService {
   // Public API
   // ---------------------------------------------------------------------------
 
-  async getHealthcheck(weekParam?: string): Promise<HealthcheckResponse> {
+  async getHealthcheck(
+    weekParam?: string,
+    includeSupport = true,
+  ): Promise<HealthcheckResponse> {
     const tz = this.configService.get<string>('TIMEZONE', 'UTC');
     const week = weekParam ?? this.lastCompletedWeek(tz);
 
@@ -112,7 +115,7 @@ export class HealthcheckService {
     // One resolver per board — loads that board's data once, then computes a
     // BoardHealthcheckResult for any requested week (no per-week re-query).
     const boardResolvers = await Promise.all(
-      configs.map((config) => this.buildBoardWeekResolver(config, tz, ideas)),
+      configs.map((config) => this.buildBoardWeekResolver(config, tz, ideas, includeSupport)),
     );
 
     // Pool all boards per week (ADR 0074): sum applicable boards' numerators
@@ -180,6 +183,7 @@ export class HealthcheckService {
     config: BoardConfig,
     tz: string,
     ideas: { allIdeas: JpdIdea[]; ruleByJpdKey: Map<string, EpicConflictResolution> },
+    includeSupport: boolean,
   ): Promise<(week: string) => BoardHealthcheckResult> {
     const boardType: 'scrum' | 'kanban' = config.boardType === 'kanban' ? 'kanban' : 'scrum';
 
@@ -255,6 +259,7 @@ export class HealthcheckService {
         isRoadmapLinked: (key) => roadmapLinkedKeys.has(key),
         supportConfig,
         linksByIssue,
+        includeSupport,
       });
     };
   }

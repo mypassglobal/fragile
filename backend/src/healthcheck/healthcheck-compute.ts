@@ -16,6 +16,9 @@
  *   - Roadmap  (scrum only): started tickets that are roadmap-linked
  *     (membership — `isRoadmapLinked`).
  *   - Support  (all boards): started tickets classified as support.
+ *
+ * When `includeSupport` is false, support tickets are removed from the
+ * Stability/Roadmap denominator and numerators (Support is never affected).
  */
 import type { JiraIssue, JiraChangelog, JiraIssueLink } from '../database/entities/index.js';
 import {
@@ -98,6 +101,13 @@ export interface BoardHealthcheckInput {
   supportConfig: SupportClassifierConfig;
   /** Per-issue links (source = issue) for support link classification. */
   linksByIssue: Map<string, JiraIssueLink[]>;
+  /**
+   * When false, support tickets are excluded from the Stability & Roadmap
+   * denominator and numerators (score reflects planned-work quality on
+   * non-support work only). The Support dimension is never affected. Defaults
+   * to true — the historical behaviour.
+   */
+  includeSupport?: boolean;
 }
 
 /**
@@ -155,11 +165,15 @@ export function computeBoardHealthcheck(
   }
 
   const denominator = started.length;
+  const includeSupport = input.includeSupport ?? true;
 
   // --- Numerators ---
   let stabilityNumerator = 0;
   let roadmapNumerator = 0;
   let supportNumerator = 0;
+  // When support is excluded, Stability & Roadmap score against a reduced
+  // denominator (non-support started tickets only). Support keeps the full one.
+  let planningDenominator = 0;
   const tickets: HealthcheckTicket[] = [];
 
   for (const { issue, startedAt } of started) {
@@ -176,8 +190,10 @@ export function computeBoardHealthcheck(
     );
     const isSupport = classification.isSupport;
 
-    if (planned) stabilityNumerator += 1;
-    if (onRoadmap) roadmapNumerator += 1;
+    const countsTowardPlanning = includeSupport || !isSupport;
+    if (countsTowardPlanning) planningDenominator += 1;
+    if (planned && countsTowardPlanning) stabilityNumerator += 1;
+    if (onRoadmap && countsTowardPlanning) roadmapNumerator += 1;
     if (isSupport) supportNumerator += 1;
 
     tickets.push({
@@ -197,10 +213,11 @@ export function computeBoardHealthcheck(
     boardId: input.boardId,
     boardType: input.boardType,
     denominator,
-    // Stability & Roadmap only apply to scrum boards (ADR 0070).
-    stability: { numerator: stabilityNumerator, denominator, applicable: !isKanban },
-    roadmap: { numerator: roadmapNumerator, denominator, applicable: !isKanban },
-    // Support applies to all boards.
+    // Stability & Roadmap only apply to scrum boards (ADR 0070). Their
+    // denominator excludes support tickets when includeSupport is false.
+    stability: { numerator: stabilityNumerator, denominator: planningDenominator, applicable: !isKanban },
+    roadmap: { numerator: roadmapNumerator, denominator: planningDenominator, applicable: !isKanban },
+    // Support applies to all boards and always uses the full denominator.
     support: { numerator: supportNumerator, denominator, applicable: true },
     tickets,
   };

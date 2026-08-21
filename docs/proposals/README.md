@@ -81,3 +81,4 @@
 | [0082](0082-snapshot-quarter-cycle-time-support.md) | Snapshot the quarter views for DORA / Cycle Time / Support | Accepted | 2026-08-11 |
 | [0083](0083-unify-lambda-snapshot-writer.md) | Unify the Lambda snapshot handler with the in-process snapshot writer | Superseded by 0084 | 2026-08-11 |
 | [0084](0084-snapshot-compute-rearchitecture.md) | Snapshot compute re-architecture: one shared writer + change-scoped recompute | Accepted | 2026-08-12 |
+| [0085](0085-healthcheck-support-toggle-board-filter-tz-cutoff.md) | Healthcheck: support-inclusion toggle, tickets board filter, timezone week cutoff fix | Accepted | 2026-08-21 |

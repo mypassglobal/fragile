@@ -10,8 +10,10 @@
  * ticket is not counted toward those org metrics, rather than a plain dash
  * (which would read as "started but didn't qualify").
  */
+import { useMemo, useState } from 'react'
 import { ExternalLink, Check, Minus } from 'lucide-react'
 import { DataTable, type Column } from '@/components/ui/data-table'
+import { BoardChip } from '@/components/ui/board-chip'
 import type { HealthcheckTicket } from '@/lib/api'
 
 function Flag({ on }: { on: boolean }) {
@@ -89,12 +91,45 @@ const columns: Column<HealthcheckTicket>[] = [
 ]
 
 export function HealthcheckTicketsTable({ tickets }: { tickets: HealthcheckTicket[] }) {
+  // null = All. Client-side filter over the already-loaded tickets — same
+  // pattern as the gaps/unplanned-done tables.
+  const [selectedBoard, setSelectedBoard] = useState<string | null>(null)
+
+  const boards = useMemo(
+    () => Array.from(new Set(tickets.map((t) => t.boardId))).sort((a, b) => a.localeCompare(b)),
+    [tickets],
+  )
+
+  const filtered = useMemo(
+    () => (selectedBoard === null ? tickets : tickets.filter((t) => t.boardId === selectedBoard)),
+    [tickets, selectedBoard],
+  )
+
   return (
     <div className="space-y-2">
       <h3 className="text-sm font-semibold text-foreground">
-        Included tickets ({tickets.length})
+        Included tickets ({filtered.length})
       </h3>
-      <DataTable columns={columns} data={tickets} />
+      {boards.length > 1 && (
+        <div className="flex flex-wrap gap-2">
+          <BoardChip
+            boardId="All"
+            selected={selectedBoard === null}
+            onClick={() => setSelectedBoard(null)}
+          />
+          {boards.map((boardId) => (
+            <BoardChip
+              key={boardId}
+              boardId={boardId}
+              selected={selectedBoard === boardId}
+              onClick={() =>
+                setSelectedBoard((prev) => (prev === boardId ? null : boardId))
+              }
+            />
+          ))}
+        </div>
+      )}
+      <DataTable columns={columns} data={filtered} />
       <p className="text-xs text-text-muted">
         <span className="mr-1 inline-flex items-center rounded-full border border-dashed border-border px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wide">
           N/A

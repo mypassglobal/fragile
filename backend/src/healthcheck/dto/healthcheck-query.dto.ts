@@ -1,10 +1,13 @@
-import { IsString, IsOptional, Matches } from 'class-validator';
+import { IsString, IsOptional, IsBoolean, Matches } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 /**
  * Query parameters for GET /api/healthcheck
  *
  * week: optional ISO week (YYYY-Www). Defaults to the last completed ISO week.
+ * includeSupport: optional boolean (default true). When false, support tickets
+ *   are excluded from the Stability & Roadmap scores.
  */
 export class HealthcheckQueryDto {
   @ApiPropertyOptional({
@@ -19,4 +22,19 @@ export class HealthcheckQueryDto {
       'week must be in YYYY-Www format with a valid week number (01–53), e.g. 2026-W30',
   })
   week?: string;
+
+  @ApiPropertyOptional({
+    description:
+      'When false, support tickets are excluded from the Stability and Roadmap ' +
+      'denominator and numerators (the Support score is unaffected). Defaults to true.',
+    default: true,
+  })
+  @IsOptional()
+  @IsBoolean()
+  @Transform(({ value }: { value: unknown }) => {
+    if (value === 'true' || value === true) return true;
+    if (value === 'false' || value === false) return false;
+    return value;
+  })
+  includeSupport?: boolean;
 }

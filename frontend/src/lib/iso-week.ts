@@ -6,9 +6,29 @@
  * sides agree on week boundaries.
  */
 
-/** Convert a Date to an ISO week key (YYYY-Www). */
-export function dateToIsoWeekKey(date: Date): string {
-  const d = new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))
+/**
+ * The calendar Y/M/D of an instant as observed in a given IANA timezone.
+ * Mirrors the backend `dateParts` helper so client and server agree on which
+ * calendar day (and therefore ISO week) an instant falls in.
+ */
+function calendarDateInTz(
+  date: Date,
+  tz: string,
+): { year: number; month: number; day: number } {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date)
+  const get = (t: string) => Number(parts.find((p) => p.type === t)?.value)
+  return { year: get('year'), month: get('month') - 1, day: get('day') }
+}
+
+/** Convert a Date to an ISO week key (YYYY-Www), bucketed in the given timezone. */
+export function dateToIsoWeekKey(date: Date, tz: string = 'UTC'): string {
+  const { year, month, day } = calendarDateInTz(date, tz)
+  const d = new Date(Date.UTC(year, month, day))
   const dow = d.getUTCDay() === 0 ? 7 : d.getUTCDay()
   const thursday = new Date(d)
   thursday.setUTCDate(d.getUTCDate() + (4 - dow))
@@ -21,9 +41,9 @@ export function dateToIsoWeekKey(date: Date): string {
   return `${isoYear}-W${String(weekNum).padStart(2, '0')}`
 }
 
-/** Current ISO week key. */
-export function currentIsoWeek(): string {
-  return dateToIsoWeekKey(new Date())
+/** Current ISO week key, bucketed in the given timezone (defaults to UTC). */
+export function currentIsoWeek(tz: string = 'UTC', now: Date = new Date()): string {
+  return dateToIsoWeekKey(now, tz)
 }
 
 /** Parse a YYYY-Www key to the UTC Date of that week's Monday, or null. */
@@ -64,7 +84,7 @@ export function nextWeek(week: string): string {
   return dateToIsoWeekKey(monday)
 }
 
-/** The last completed ISO week (the week before the current one). */
-export function lastCompletedWeek(): string {
-  return prevWeek(currentIsoWeek())
+/** The last completed ISO week (the week before the current one), in `tz`. */
+export function lastCompletedWeek(tz: string = 'UTC', now: Date = new Date()): string {
+  return prevWeek(currentIsoWeek(tz, now))
 }

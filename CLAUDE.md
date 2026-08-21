@@ -448,6 +448,7 @@ See the `architect` and `decision-log` skills for the exact proposal and ADR for
 | 0056 | Cycle time reopen handling: shared `extractCycles` helper; representative = latest completed cycle |
 | 0060 | DORA Aggregate: quarter parameter for historical quarters; `elapsedDays`/`totalDays`/`partial` on period |
 | 0062 | Kanban stability score: throughput balance `min(completed/entered, 1) * 100` replaces broken disruption-ratio for kanban boards |
+| 0091 | Healthcheck `includeSupport` (default true): when false, support tickets excluded from Stability & Roadmap denominator + numerators; Support dimension unaffected; applies to week + trend |
 
 ---
 

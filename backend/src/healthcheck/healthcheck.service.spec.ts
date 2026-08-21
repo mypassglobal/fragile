@@ -214,6 +214,35 @@ describe('HealthcheckService', () => {
     expect(result.stability.band).toBe('amber')
   })
 
+  it('excludes support tickets from Stability/Roadmap when includeSupport=false, leaving Support unchanged', async () => {
+    // ACC-1 is support AND committed; ACC-2 is committed non-support.
+    const issues = [
+      issue({ key: 'ACC-1', labels: ['support'] }),
+      issue({ key: 'ACC-2' }),
+    ];
+    const changelogs = [
+      statusLog('ACC-1', 'In Progress', IN_WEEK),
+      statusLog('ACC-2', 'In Progress', IN_WEEK),
+    ];
+    const service = await buildService({
+      configs: [config({ supportLabels: ['support'] })],
+      issues,
+      changelogs,
+      sprints: [sprint()],
+      membership: new Map([['S1', membershipWith(['ACC-1', 'ACC-2'])]]),
+    });
+
+    const result = await service.getHealthcheck('2026-W30', false);
+    // Support ticket ACC-1 dropped from the Stability denominator: 1 of 1 committed.
+    expect(result.stability.denominator).toBe(1);
+    expect(result.stability.numerator).toBe(1);
+    expect(result.stability.score).toBe(100);
+    // Support dimension keeps the full denominator (both started tickets).
+    expect(result.support.denominator).toBe(2);
+    expect(result.support.numerator).toBe(1);
+    expect(result.support.score).toBe(50);
+  });
+
   it('excludes tickets whose first in-progress transition predates the week', async () => {
     const service = await buildService({
       configs: [config()],

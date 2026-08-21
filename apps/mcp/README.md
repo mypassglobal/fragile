@@ -2,8 +2,8 @@
 
 MCP (Model Context Protocol) server for the [Fragile](https://github.com/your-org/fragile)
 engineering metrics dashboard. Exposes 19 read-only tools, 2 resources, and 4 prompt templates
-over stdio — compatible with Claude Desktop, Cursor, GitHub Copilot agent mode, and any other
-MCP-compatible AI client.
+over stdio — compatible with Claude Desktop, Claude Code (CLI), Cursor, GitHub Copilot agent
+mode, and any other MCP-compatible AI client.
 
 ## What it does
 
@@ -72,6 +72,35 @@ Add the following to `.cursor/mcp.json` in your home directory or project root:
 > **Generating a key:** same as Claude Desktop — open **API Keys** in the Fragile web app,
 > click **Generate key**, and copy it immediately.
 
+## Claude Code (CLI) setup
+
+Add the server with `claude mcp add`:
+
+```bash
+claude mcp add fragile \
+  --env API_BASE_URL=https://api.your-fragile-domain.com \
+  --env API_KEY=frg_your_generated_key \
+  -- npx -y @fragile.app/mcp
+```
+
+By default the server is scoped to the current project. Use `--scope user` to make it
+available across all your projects, or `--scope project` to share it with the team via a
+`.mcp.json` file committed to the repo (put the key in an environment variable rather than
+committing it).
+
+Verify and inspect:
+
+```bash
+claude mcp list          # confirm "fragile" is connected
+claude mcp get fragile   # show its configuration
+```
+
+The Fragile tools are then available in any `claude` CLI session. Remove with
+`claude mcp remove fragile`.
+
+> **Generating a key:** same as above — open **API Keys** in the Fragile web app,
+> click **Generate key**, and copy it immediately.
+
 ## Available tools
 
 | Tool | Description |
@@ -88,7 +117,7 @@ Add the following to `.cursor/mcp.json` in your home directory or project root:
 | `get_sprint_report` | Composite sprint report with recommendations |
 | `get_support_tickets` | Support ticket observations (cycle time, match reason) for a period |
 | `get_support_summary` | Aggregated support load (% support, p50/p95 cycle time, per-board breakdown) |
-| `get_healthcheck_report` | Weekly org-wide engineering scorecard (Stability, Roadmap, Support) with 8-week trend |
+| `get_healthcheck_report` | Weekly org-wide engineering scorecard (Stability, Roadmap, Support) with 8-week trend. Optional `includeSupport` (default true) excludes support tickets from the Stability and Roadmap scores when false. |
 | `get_roadmap_accuracy` | Roadmap coverage accuracy |
 | `list_boards` | All configured boards |
 | `get_board_config` | Full board configuration |

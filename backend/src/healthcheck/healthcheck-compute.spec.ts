@@ -310,6 +310,81 @@ describe('computeBoardHealthcheck — tickets', () => {
   });
 });
 
+describe('computeBoardHealthcheck — includeSupport toggle', () => {
+  // ACC-1 planned+roadmap non-support; ACC-2 support-only.
+  const issues = [
+    issue({ key: 'ACC-1', labels: [] }),
+    issue({ key: 'ACC-2', labels: ['support'] }),
+  ];
+  const logs = new Map<string, JiraChangelog[]>([
+    ['ACC-1', [statusLog('ACC-1', 'In Progress', '2026-07-21T10:00:00Z')]],
+    ['ACC-2', [statusLog('ACC-2', 'In Progress', '2026-07-22T10:00:00Z')]],
+  ]);
+  const supportConfig = { supportEpics: [], supportLabels: ['support'], supportLinkTypes: [], triageBoardKey: null };
+
+  it('defaults to including support (unchanged behaviour) when includeSupport is omitted', () => {
+    const result = computeBoardHealthcheck(
+      baseInput({
+        issues,
+        statusChangelogsByIssue: logs,
+        committedKeysAt: (key) => key === 'ACC-1',
+        isRoadmapLinked: (key) => key === 'ACC-1',
+        supportConfig,
+      }),
+    );
+    // Denominator includes the support ticket.
+    expect(result.stability.denominator).toBe(2);
+    expect(result.roadmap.denominator).toBe(2);
+    expect(result.stability.numerator).toBe(1);
+    expect(result.roadmap.numerator).toBe(1);
+  });
+
+  it('excludes support tickets from Stability & Roadmap denominator AND numerator when includeSupport=false', () => {
+    const result = computeBoardHealthcheck(
+      baseInput({
+        issues,
+        statusChangelogsByIssue: logs,
+        committedKeysAt: (key) => key === 'ACC-1',
+        isRoadmapLinked: (key) => key === 'ACC-1',
+        supportConfig,
+        includeSupport: false,
+      }),
+    );
+    // The support ticket (ACC-2) drops out of the Stability/Roadmap denominator.
+    expect(result.stability.denominator).toBe(1);
+    expect(result.roadmap.denominator).toBe(1);
+    expect(result.stability.numerator).toBe(1);
+    expect(result.roadmap.numerator).toBe(1);
+  });
+
+  it('leaves the Support dimension unaffected by includeSupport=false', () => {
+    const result = computeBoardHealthcheck(
+      baseInput({
+        issues,
+        statusChangelogsByIssue: logs,
+        supportConfig,
+        includeSupport: false,
+      }),
+    );
+    // Support keeps the full denominator and its own numerator.
+    expect(result.support.denominator).toBe(2);
+    expect(result.support.numerator).toBe(1);
+  });
+
+  it('still lists every started ticket regardless of includeSupport', () => {
+    const result = computeBoardHealthcheck(
+      baseInput({
+        issues,
+        statusChangelogsByIssue: logs,
+        supportConfig,
+        includeSupport: false,
+      }),
+    );
+    expect(result.tickets.map((t) => t.key).sort()).toEqual(['ACC-1', 'ACC-2']);
+    expect(result.denominator).toBe(2);
+  });
+});
+
 describe('computeBoardHealthcheck — empty denominator', () => {
   it('reports a zero denominator for all dimensions when nothing started this week', () => {
     const result = computeBoardHealthcheck(baseInput({ issues: [], statusChangelogsByIssue: new Map() }));

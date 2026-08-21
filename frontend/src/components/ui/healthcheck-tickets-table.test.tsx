@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import { HealthcheckTicketsTable } from './healthcheck-tickets-table'
 import type { HealthcheckTicket } from '@/lib/api'
 
@@ -82,5 +82,39 @@ describe('HealthcheckTicketsTable', () => {
     render(<HealthcheckTicketsTable tickets={[]} />)
     expect(screen.getByText('Included tickets (0)')).toBeInTheDocument()
     expect(screen.getByText('No data available')).toBeInTheDocument()
+  })
+
+  it('offers an All chip plus one chip per distinct board present', () => {
+    render(
+      <HealthcheckTicketsTable
+        tickets={[
+          ticket({ key: 'ACC-1', boardId: 'ACC' }),
+          ticket({ key: 'BPT-1', boardId: 'BPT' }),
+        ]}
+      />,
+    )
+    expect(screen.getByRole('button', { name: 'All' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'ACC' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'BPT' })).toBeInTheDocument()
+  })
+
+  it('filters the table to the selected board and updates the count', () => {
+    render(
+      <HealthcheckTicketsTable
+        tickets={[
+          ticket({ key: 'ACC-1', boardId: 'ACC' }),
+          ticket({ key: 'BPT-1', boardId: 'BPT' }),
+        ]}
+      />,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'ACC' }))
+    expect(screen.getByText('ACC-1')).toBeInTheDocument()
+    expect(screen.queryByText('BPT-1')).not.toBeInTheDocument()
+    expect(screen.getByText('Included tickets (1)')).toBeInTheDocument()
+
+    // Back to All shows everything again.
+    fireEvent.click(screen.getByRole('button', { name: 'All' }))
+    expect(screen.getByText('BPT-1')).toBeInTheDocument()
+    expect(screen.getByText('Included tickets (2)')).toBeInTheDocument()
   })
 })

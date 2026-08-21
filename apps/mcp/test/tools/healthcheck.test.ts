@@ -63,5 +63,25 @@ describe('Healthcheck tools', () => {
 
       expect(mockApiGet).toHaveBeenCalledWith('/api/healthcheck', {});
     });
+
+    it('forwards includeSupport=false when the caller disables support', async () => {
+      mockApiGet.mockResolvedValueOnce(mockSuccess({ week: '2026-W30', stability: {}, roadmap: {}, support: {}, trend: [] }));
+
+      const server = makeServer();
+      await callTool(server, 'get_healthcheck_report', { week: '2026-W30', includeSupport: false });
+
+      expect(mockApiGet).toHaveBeenCalledWith('/api/healthcheck', { week: '2026-W30', includeSupport: 'false' });
+    });
+
+    it('does NOT forward includeSupport when true or unset (backend defaults to including support)', async () => {
+      mockApiGet.mockResolvedValue(mockSuccess({ week: '2026-W30', stability: {}, roadmap: {}, support: {}, trend: [] }));
+
+      const server = makeServer();
+      await callTool(server, 'get_healthcheck_report', { week: '2026-W30', includeSupport: true });
+      expect(mockApiGet).toHaveBeenLastCalledWith('/api/healthcheck', { week: '2026-W30' });
+
+      await callTool(server, 'get_healthcheck_report', { week: '2026-W30' });
+      expect(mockApiGet).toHaveBeenLastCalledWith('/api/healthcheck', { week: '2026-W30' });
+    });
   });
 });
