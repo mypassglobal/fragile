@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Save, Loader2, CheckCircle, XCircle, Plus, Trash2, RefreshCw, X, AlertTriangle } from 'lucide-react';
 import {
@@ -74,7 +74,8 @@ interface CsvFieldProps {
  * focus (`onBlur`).  When the parent value changes from outside (e.g. a new
  * board is selected) the draft is re-initialised from the incoming array.
  */
-function CsvField({ label, value, onChange, hint }: CsvFieldProps) {
+export function CsvField({ label, value, onChange, hint }: CsvFieldProps) {
+  const fieldId = useId();
   // Local free-text draft — the user types into this without any mid-keystroke
   // parsing that would strip commas or spaces.
   const [draft, setDraft] = useState<string>(() => value.join(', '))
@@ -108,8 +109,9 @@ function CsvField({ label, value, onChange, hint }: CsvFieldProps) {
 
   return (
     <div>
-      <label className="mb-1.5 block text-sm font-medium">{label}</label>
+      <label htmlFor={fieldId} className="mb-1.5 block text-sm font-medium">{label}</label>
       <input
+        id={fieldId}
         type="text"
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
@@ -639,6 +641,11 @@ export default function SettingsPage() {
                   label="Incident Labels"
                   value={config.incidentLabels}
                   onChange={(v) => updateField('incidentLabels', v)}
+                />
+                <CsvField
+                  label="Incident Priorities"
+                  value={config.incidentPriorities}
+                  onChange={(v) => updateField('incidentPriorities', v)}
                 />
               </div>
             </div>

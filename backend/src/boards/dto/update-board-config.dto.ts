@@ -57,6 +57,18 @@ export class UpdateBoardConfigDto {
 
   @ApiPropertyOptional({
     type: [String],
+    example: ['Critical'],
+    description:
+      'Jira priority names that AND-gate incident matching for MTTR. ' +
+      'Defaults to ["Critical"] when unset; empty array means all priorities qualify.',
+  })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  incidentPriorities?: string[];
+
+  @ApiPropertyOptional({
+    type: [String],
     example: ['10303'],
     description: 'Status IDs that represent the Kanban backlog (never-on-board). When set, issues whose current statusId is in this list are excluded from flow metrics.',
   })
