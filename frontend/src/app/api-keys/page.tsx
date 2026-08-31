@@ -132,6 +132,36 @@ export default function ApiKeysPage() {
         </div>
       </details>
 
+      {/* How to use with Claude Code (CLI) */}
+      <details className="rounded-xl border border-border bg-card shadow-sm">
+        <summary className="cursor-pointer px-4 py-3 text-sm font-semibold">
+          Use this key with Claude Code (CLI)
+        </summary>
+        <div className="space-y-3 border-t border-border px-4 py-3 text-sm text-muted">
+          <p>
+            Add the Fragile MCP server to the <code className="font-mono text-xs">claude</code> CLI
+            with <code className="font-mono text-xs">claude mcp add</code>.
+          </p>
+          <pre className="overflow-x-auto rounded-lg border border-border bg-background px-3 py-3 font-mono text-xs text-foreground">
+{`claude mcp add fragile \\
+  --env API_BASE_URL=${apiBaseUrl} \\
+  --env API_KEY=frg_your_generated_key \\
+  -- npx -y @fragile.app/mcp`}
+          </pre>
+          <p>
+            The server is scoped to the current project by default. Use{' '}
+            <code className="font-mono text-xs">--scope user</code> to make it available across all
+            your projects. Verify with <code className="font-mono text-xs">claude mcp list</code>{' '}
+            and remove with <code className="font-mono text-xs">claude mcp remove fragile</code>.
+          </p>
+          <p>
+            Replace <code className="font-mono text-xs">frg_your_generated_key</code> with the key
+            you generated. The Fragile tools are then available in any{' '}
+            <code className="font-mono text-xs">claude</code> session.
+          </p>
+        </div>
+      </details>
+
       {/* Create */}
       <div className="rounded-xl border border-border bg-card p-4 shadow-sm">
         <div className="flex flex-wrap items-end gap-3">
